@@ -75,7 +75,7 @@ export function Desk() {
   const health = Math.max(0, 100 - overTheme.length * 15 - badSize.length * 8);
   const redFlags = [...overTheme.map(([t, w]) => `${t} theme at ${w.toFixed(0)}% (>35%)`), ...badSize.map((h) => `${h.symbol} position size off-target`), ...NEWS.filter((n) => n.verification !== "Verified").map((n) => `Unverified: ${n.headline.en}`)];
   const hour = new Date().getHours();
-  const briefText = `${hour < 15 ? "Morning" : "Evening"} brief. NIFTY at ${TICKERS[0].value}, up ${TICKERS[0].chg}%. India VIX ${vix}, noise ${noise[0]}. ` + NEWS.filter((n) => n.tag !== "Noise").map((n) => `${n.headline[lang]}. ${n.tldr[lang].join(". ")}`).join(". ") + `. Portfolio health score ${health} out of 100.`;
+  const briefText = `${hour < 15 ? "Morning" : "Evening"} brief. NIFTY at ${TICKERS[0]!.value}, up ${TICKERS[0]!.chg}%. India VIX ${vix}, noise ${noise[0]}. ` + NEWS.filter((n) => n.tag !== "Noise").map((n) => `${n.headline[lang]}. ${n.tldr[lang].join(". ")}`).join(". ") + `. Portfolio health score ${health} out of 100.`;
 
   const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
@@ -134,7 +134,7 @@ export function Desk() {
         <aside className="space-y-4">
           <Widget title="🚩 Instant Red Flag Alerts">{redFlags.length ? redFlags.map((r) => <p key={r} className="text-loss text-xs">• {r}</p>) : <p>All clear.</p>}</Widget>
           <Widget title="❤️ Weekly Portfolio Health"><p className="text-4xl font-bold">{health}<span className="text-base">/100</span></p><p className="text-xs text-muted-foreground">{overTheme.length} theme & {badSize.length} sizing issues</p></Widget>
-          <Widget title={hour < 15 ? "☀️ Morning Market Brief" : "🌙 Evening Market Brief"}><p className="text-xs">NIFTY {TICKERS[0].chg > 0 ? "opened firm" : "under pressure"}; banks led by HDFC Bank's NIM beat. L&T order win lifts infra. VIX {vix} — {noise[0].toLowerCase()} session expected.</p></Widget>
+          <Widget title={hour < 15 ? "☀️ Morning Market Brief" : "🌙 Evening Market Brief"}><p className="text-xs">NIFTY {TICKERS[0]!.chg > 0 ? "opened firm" : "under pressure"}; banks led by HDFC Bank's NIM beat. L&T order win lifts infra. VIX {vix} — {noise[0].toLowerCase()} session expected.</p></Widget>
           <Widget title="💰 Smart Money FII/DII"><Flows /></Widget>
           <Widget title="🗺️ Sector Heatmap"><Heatmap /></Widget>
         </aside>

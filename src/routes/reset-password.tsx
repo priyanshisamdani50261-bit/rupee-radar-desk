@@ -1,0 +1,11 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+export const Route = createFileRoute("/reset-password")({ head: () => ({ meta: [{ title: "Reset Password | MY MARKET DESK" }, { name: "description", content: "Set a new password for your private market desk." }, { property: "og:title", content: "MY MARKET DESK — Reset Password" }, { property: "og:description", content: "Recover access to your private account." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }), component: ResetPassword });
+function ResetPassword() {
+  const [recovery, setRecovery] = useState(false); const [password, setPassword] = useState(""); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
+  useEffect(() => { setRecovery(new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery" || sessionStorage.getItem("mmd-recovery") === "true"); }, []);
+  async function submit(e: React.FormEvent) { e.preventDefault(); setBusy(true); try { const { error } = await supabase.auth.updateUser({ password }); if (error) throw error; setMessage("Password updated. You can return to your desk."); sessionStorage.removeItem("mmd-recovery"); setRecovery(false); } catch (err) { setMessage(err instanceof Error ? err.message : "Could not reset password."); } finally { setBusy(false); } }
+  return <main className="max-w-md mx-auto p-6 space-y-5"><h1 className="text-3xl font-bold">Set new password</h1>{recovery ? <form onSubmit={submit} className="space-y-4"><label className="block">New password<input aria-label="New password" type="password" minLength={8} autoComplete="new-password" required className="block border bg-background p-2 w-full" value={password} onChange={e => setPassword(e.target.value)} /></label><Button disabled={busy}>Update password</Button></form> : <p>Open a valid password reset link from your email.</p>}{message && <p role="status">{message}</p>}<Link to="/auth" className="underline">Back to account</Link></main>;
+}

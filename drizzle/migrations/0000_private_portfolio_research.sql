@@ -1,0 +1,10 @@
+CREATE TABLE public.portfolios (user_id uuid PRIMARY KEY, holdings jsonb NOT NULL DEFAULT '[]'::jsonb);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.portfolios TO authenticated;
+GRANT ALL ON public.portfolios TO service_role;
+ALTER TABLE public.portfolios ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Own portfolio" ON public.portfolios FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE TABLE public.research_notes (user_id uuid NOT NULL, symbol text NOT NULL, note text NOT NULL DEFAULT '', conviction integer NOT NULL DEFAULT 50 CHECK (conviction BETWEEN 0 AND 100), triggers jsonb NOT NULL DEFAULT '[]'::jsonb, PRIMARY KEY (user_id, symbol));
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.research_notes TO authenticated;
+GRANT ALL ON public.research_notes TO service_role;
+ALTER TABLE public.research_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Own research notes" ON public.research_notes FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

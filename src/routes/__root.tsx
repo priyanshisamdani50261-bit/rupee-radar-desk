@@ -8,7 +8,10 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { AccountProvider } from "@/desk/account";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -122,11 +125,25 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") { sessionStorage.setItem("mmd-recovery", "true"); void router.navigate({ to: "/reset-password" }); return; }
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      if (event === "SIGNED_OUT") { setUser(null); queryClient.clear(); void router.invalidate(); return; }
+      void supabase.auth.getUser().then(({ data }) => { if (active) { setUser(data.user); setReady(true); void router.invalidate(); void queryClient.invalidateQueries(); } });
+    });
+    void supabase.auth.getUser().then(({ data }) => { if (active) { setUser(data.user); setReady(true); } });
+    return () => { active = false; subscription.unsubscribe(); };
+  }, [queryClient, router]);
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AccountProvider user={user} ready={ready}><Outlet /></AccountProvider>
     </QueryClientProvider>
   );
 }

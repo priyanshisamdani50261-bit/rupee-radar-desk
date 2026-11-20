@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { StockLink } from "./StockLink";
+import { STOCKS, mentionedStocks } from "./stocks";
 import { GLOSSARY, tr, type Lang, type News } from "./data";
 import { useSpeaker } from "./speech";
 
@@ -10,15 +13,15 @@ function Glossed({ text }: { text: string }) {
     <span className="relative">
       {text.split(re).map((p, i) =>
         GLOSSARY[p] ? (
-          <button key={i} onClick={() => setOpen(open === p ? null : p)} className="underline decoration-dotted decoration-2 underline-offset-2 font-bold">
+          <Button variant="ghost" key={i} onClick={() => setOpen(open === p ? null : p)} className="underline decoration-dotted decoration-2 underline-offset-2 font-bold">
             {p}
-          </button>
+          </Button>
         ) : <span key={i}>{p}</span>,
       )}
       {open && (
         <span className="absolute left-0 top-6 z-20 block w-64 paper-card p-3 text-xs">
           <b>{open}</b>: {GLOSSARY[open]}
-          <button className="ml-2 underline" onClick={() => setOpen(null)}>close</button>
+          <Button variant="ghost" className="ml-2 underline" onClick={() => setOpen(null)}>close</Button>
         </span>
       )}
     </span>
@@ -44,7 +47,8 @@ export function NewsCard({ n, lang }: { n: News; lang: Lang }) {
         <span className={`px-2 py-0.5 font-bold ${tagCls[n.tag]}`}>{n.tag}</span>
         {!hideCall && <span className={`px-2 py-0.5 border font-bold ${n.sentiment === "Bull" ? "border-gain text-gain" : "border-loss text-loss"}`}>{n.sentiment === "Bull" ? "▲ Bull" : "▼ Bear"}</span>}
       </div>
-      <h3 className="text-xl font-bold leading-snug">{n.headline[lang]}</h3>
+      <h3 className="text-xl font-bold leading-snug">{stockHeadline(n.headline[lang])}</h3>
+      <div className="flex flex-wrap gap-3 text-xs">{mentionedStocks(n.headline.en + " " + n.winners.join(" ") + " " + n.losers.join(" ")).map(s => <StockLink key={s.symbol} symbol={s.symbol} />)}</div>
       <ul className="list-disc pl-5 text-sm space-y-1">{n.tldr[lang].map((t, i) => <li key={i}><Glossed text={t} /></li>)}</ul>
 
       <div className="grid sm:grid-cols-2 gap-3 text-xs">
@@ -60,25 +64,25 @@ export function NewsCard({ n, lang }: { n: News; lang: Lang }) {
 
       <div className="flex flex-wrap items-center gap-2">
         {sp.state === "idle" ? (
-          <button onClick={() => sp.play(speakText)} className="border border-foreground px-3 py-1 text-sm font-bold hover:bg-accent">{tr("listen", lang)}</button>
+          <Button variant="ghost" onClick={() => sp.play(speakText)} className="border border-foreground px-3 py-1 text-sm font-bold hover:bg-accent">{tr("listen", lang)}</Button>
         ) : (
           <div className="flex flex-wrap items-center gap-3 border border-foreground px-3 py-1.5 text-sm w-full">
-            {sp.state === "playing" ? <button onClick={sp.pause} className="font-bold">⏸ Pause</button> : <button onClick={sp.resume} className="font-bold">▶ Resume</button>}
-            <button onClick={sp.stop} className="font-bold">⏹ Stop</button>
+            {sp.state === "playing" ? <Button variant="ghost" onClick={sp.pause} className="font-bold">⏸ Pause</Button> : <Button variant="ghost" onClick={sp.resume} className="font-bold">▶ Resume</Button>}
+            <Button variant="ghost" onClick={sp.stop} className="font-bold">⏹ Stop</Button>
             <label className="flex items-center gap-2 flex-1 min-w-40">Speed
               <input type="range" min={1} max={2} step={0.1} value={sp.rate} onChange={(e) => sp.setRate(Number(e.target.value))} className="flex-1 accent-foreground" />
               <b>{sp.rate.toFixed(1)}x</b>
             </label>
           </div>
         )}
-        <button onClick={() => setDeep(!deep)} className="ml-auto text-sm underline font-bold">{deep ? "Close ▲" : tr("deep", lang)}</button>
+        <Button variant="ghost" onClick={() => setDeep(!deep)} className="ml-auto text-sm underline font-bold">{deep ? "Close ▲" : tr("deep", lang)}</Button>
       </div>
 
       {deep && (
         <div className="border-t border-dashed pt-3 grid sm:grid-cols-2 gap-3 text-sm">
           {hideCall ? <p className="sm:col-span-2 text-loss">Impact & Bull/Bear hidden until the story is verified.</p> : <>
             <p><b>Impact:</b> {n.impact}</p>
-            <p><b>Winners:</b> {n.winners.join(", ") || "-"} · <b>Losers:</b> {n.losers.join(", ") || "-"}</p>
+            <p><b>Winners:</b> {n.winners.map((s,i) => <span key={s}>{i > 0 && ", "}<StockLink symbol={s} /></span>)} · <b>Losers:</b> {n.losers.map((s,i) => <span key={s}>{i > 0 && ", "}{STOCKS.some(k => k.symbol === s) ? <StockLink symbol={s} /> : s}</span>)}</p>
             <p><b className="text-gain">Bull:</b> {n.bull}</p><p><b className="text-loss">Bear:</b> {n.bear}</p>
           </>}
           <p><b>Thesis:</b> <span className="bg-highlight px-1">#{n.thesis}</span></p>
@@ -90,4 +94,10 @@ export function NewsCard({ n, lang }: { n: News; lang: Lang }) {
       )}
     </article>
   );
+}
+
+function stockHeadline(text: string) {
+  const names = STOCKS.map(s => (s.name.split(" / ")[0] ?? s.name));
+  const parts = text.split(new RegExp(`(${names.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g"));
+  return parts.map((part,i) => { const s = STOCKS.find(s => (s.name.split(" / ")[0] ?? s.name) === part); return s ? <StockLink key={i} symbol={s.symbol} label={part} /> : <span key={i}>{part}</span>; });
 }

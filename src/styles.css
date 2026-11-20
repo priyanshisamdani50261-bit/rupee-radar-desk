@@ -127,3 +127,6 @@
 @utility paper-card { background: var(--color-card); border: 1px solid var(--color-border); box-shadow: 3px 3px 0 color-mix(in oklab, var(--color-foreground) 12%, transparent); }
 @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @utility animate-ticker { animation: ticker 40s linear infinite; }
+.knowledge-map { max-width: 760px; margin-inline: auto; padding-block: 1rem; }
+.graph-spine { width: 2px; height: 28px; margin-inline: auto; background: var(--foreground); }
+@media (prefers-reduced-motion: reduce) { .animate-ticker { animation: none; } }

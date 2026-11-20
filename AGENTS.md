@@ -28,3 +28,4 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+- Desk app code lives in src/desk (data/rules in data.ts, speech in speech.ts); single-route dashboard with in-page tabs because it is an app, not a content site.

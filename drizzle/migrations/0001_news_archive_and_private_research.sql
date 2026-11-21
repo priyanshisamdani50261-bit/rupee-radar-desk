@@ -1,0 +1,11 @@
+CREATE TABLE public.news_archive (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), link text NOT NULL UNIQUE, title text NOT NULL, summary text NOT NULL DEFAULT '', source text NOT NULL, published_at timestamptz NOT NULL, fetched_at timestamptz NOT NULL DEFAULT now(), enrichment jsonb);
+GRANT SELECT ON public.news_archive TO anon, authenticated;
+GRANT ALL ON public.news_archive TO service_role;
+ALTER TABLE public.news_archive ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public news archive" ON public.news_archive FOR SELECT TO anon, authenticated USING (true);
+CREATE INDEX news_archive_published_idx ON public.news_archive (published_at DESC);
+ALTER TABLE public.portfolios ADD COLUMN watchlist jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.research_notes ADD COLUMN promises jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.research_notes ADD COLUMN thesis text NOT NULL DEFAULT '';
+ALTER TABLE public.research_notes ADD COLUMN evidence jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.research_notes ADD COLUMN research jsonb;

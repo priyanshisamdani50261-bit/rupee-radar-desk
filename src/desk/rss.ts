@@ -4,6 +4,16 @@ export const RSS_SOURCES = [
   { name: "BSE Notices", url: "https://www.bseindia.com/data/xml/notices.xml" },
   { name: "Economic Times", url: "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms" },
   { name: "Moneycontrol", url: "https://www.moneycontrol.com/rss/marketreports.xml" },
+  { name: "NSE Filings", url: "https://www.nseindia.com/rss/corporate-announcements.xml" },
+  { name: "SEBI", url: "https://www.sebi.gov.in/sebirss.xml" },
+  { name: "RBI", url: "https://www.rbi.org.in/pressreleases_rss.xml" },
+  { name: "LiveMint", url: "https://www.livemint.com/rss/markets" },
+  { name: "Business Standard", url: "https://www.business-standard.com/rss/markets-106.rss" },
+  { name: "Financial Express", url: "https://www.financialexpress.com/market/feed/" },
+  { name: "CNBC-TV18", url: "https://www.cnbctv18.com/commonfeeds/v1/cne/rss/market.xml" },
+  { name: "NDTV Profit", url: "https://www.ndtvprofit.com/feed" },
+  { name: "The Hindu BusinessLine", url: "https://www.thehindubusinessline.com/markets/feeder/default.rss" },
+  { name: "Google News India Business", url: "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-IN&gl=IN&ceid=IN:en" },
 ];
 export function parseFeed(xml: string, source: string): LiveArticle[] {
   if (XMLValidator.validate(xml) !== true) throw new Error("Invalid feed");

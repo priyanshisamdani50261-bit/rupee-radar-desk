@@ -8,6 +8,20 @@
       "when": 1795155195207,
       "tag": "0000_private_portfolio_research",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795236737089,
+      "tag": "0001_news_archive_and_private_research",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795236888165,
+      "tag": "0002_shared_market_quote_cache",
+      "breakpoints": true
     }
   ]
 }

@@ -12,4 +12,4 @@ export const Route = createFileRoute("/stocks/$symbol")({
   ] }; },
   component: StockPage,
 });
-function StockPage() { const { symbol } = Route.useParams(); return <Research key={symbol} symbol={symbol} notes={<ThesisChecklist />} />; }
+function StockPage() { const { symbol } = Route.useParams(); return <Research key={symbol} symbol={symbol} notes={<ThesisChecklist symbol={symbol.toUpperCase()} />} />; }

@@ -129,4 +129,6 @@
 @utility animate-ticker { animation: ticker 40s linear infinite; }
 .knowledge-map { max-width: 760px; margin-inline: auto; padding-block: 1rem; }
 .graph-spine { width: 2px; height: 28px; margin-inline: auto; background: var(--foreground); }
+@keyframes quote-flash { from { background: color-mix(in oklab, currentColor 15%, transparent); } to { background: transparent; } }
+.quote-flash { animation: quote-flash 1s ease-out; }
 @media (prefers-reduced-motion: reduce) { .animate-ticker { animation: none; } }

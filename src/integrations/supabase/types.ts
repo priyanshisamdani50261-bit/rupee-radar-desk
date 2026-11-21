@@ -14,40 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
+      market_cache: {
+        Row: {
+          fetched_at: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          fetched_at?: string
+          id: string
+          payload: Json
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
+      news_archive: {
+        Row: {
+          enrichment: Json | null
+          fetched_at: string
+          id: string
+          link: string
+          published_at: string
+          source: string
+          summary: string
+          title: string
+        }
+        Insert: {
+          enrichment?: Json | null
+          fetched_at?: string
+          id?: string
+          link: string
+          published_at: string
+          source: string
+          summary?: string
+          title: string
+        }
+        Update: {
+          enrichment?: Json | null
+          fetched_at?: string
+          id?: string
+          link?: string
+          published_at?: string
+          source?: string
+          summary?: string
+          title?: string
+        }
+        Relationships: []
+      }
       portfolios: {
         Row: {
           holdings: Json
           user_id: string
+          watchlist: Json
         }
         Insert: {
           holdings?: Json
           user_id: string
+          watchlist?: Json
         }
         Update: {
           holdings?: Json
           user_id?: string
+          watchlist?: Json
         }
         Relationships: []
       }
       research_notes: {
         Row: {
           conviction: number
+          evidence: Json
           note: string
+          promises: Json
+          research: Json | null
           symbol: string
+          thesis: string
           triggers: Json
           user_id: string
         }
         Insert: {
           conviction?: number
+          evidence?: Json
           note?: string
+          promises?: Json
+          research?: Json | null
           symbol: string
+          thesis?: string
           triggers?: Json
           user_id: string
         }
         Update: {
           conviction?: number
+          evidence?: Json
           note?: string
+          promises?: Json
+          research?: Json | null
           symbol?: string
+          thesis?: string
           triggers?: Json
           user_id?: string
         }

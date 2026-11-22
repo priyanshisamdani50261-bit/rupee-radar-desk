@@ -132,3 +132,4 @@
 @keyframes quote-flash { from { background: color-mix(in oklab, currentColor 15%, transparent); } to { background: transparent; } }
 .quote-flash { animation: quote-flash 1s ease-out; }
 @media (prefers-reduced-motion: reduce) { .animate-ticker { animation: none; } }
+@media print { header,nav,aside,footer { display:none; } .weekly-review { width:100%; } .weekly-review button { display:none; } }

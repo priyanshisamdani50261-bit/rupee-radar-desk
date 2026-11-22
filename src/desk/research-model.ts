@@ -1,0 +1,6 @@
+import { z } from "zod";
+export const promiseSchema = z.object({ id:z.string(),metric:z.string().min(1),target:z.string().min(1),deadline:z.string().min(1),estimate:z.string(),actual:z.string(),verdict:z.enum(["Met","Missed","Pending"]),source:z.string() });
+export type ManagementPromise = z.infer<typeof promiseSchema>;
+export const researchSchema = z.object({ supporting:z.array(z.object({text:z.string(),source:z.string()})),bearish:z.array(z.object({text:z.string(),source:z.string()})),triggers:z.array(z.object({text:z.string(),date:z.string(),source:z.string()})),insights:z.array(z.object({text:z.string(),source:z.string()})),promises:z.array(promiseSchema),upstream:z.array(z.string()),downstream:z.array(z.string()),policies:z.array(z.string()),peers:z.array(z.string()) });
+export type ResearchData = z.infer<typeof researchSchema>;
+export function credibilityScore(promises:ManagementPromise[]) { const assessed=promises.filter(p=>p.verdict!=="Pending"); return assessed.length ? Math.round(assessed.filter(p=>p.verdict==="Met").length/assessed.length*100) : null; }

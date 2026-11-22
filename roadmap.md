@@ -7,3 +7,7 @@
 - [ ] Clickable sourced calendar, red flags, weekly health print review, multilingual brief and smart-money views.
 - [ ] Research evidence/thesis editing, peers, live graph news, management promise editing/AI autofill, real historical returns and tax countdown.
 - [ ] Verify private read-back, feeds, Gemini, quotes, research and mobile layouts.
+- [ ] Holding/watchlist type selector and distinct watchlist table; watchlist coverage across all stock surfaces.
+- [ ] Gemini 2.5 Flash endpoint verification and instant switching between cached language translations.
+- [ ] Publisher-specific Google News queries for blocked feeds; diagnostics outside the Command Center.
+- [ ] Multi-select source checkbox menu with Select All / Clear.

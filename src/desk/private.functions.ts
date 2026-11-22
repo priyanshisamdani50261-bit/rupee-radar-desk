@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-const holding = z.object({ id: z.string(), symbol: z.string().min(1).max(32), theme: z.string().max(100), qty: z.number().nonnegative(), buyPrice: z.number().nonnegative(), ltp: z.number().nonnegative(), buyDate: z.string(), conviction: z.enum(["High", "Med", "Low"]), reason: z.string().max(10000), preMortem: z.string().max(10000) });
+const holding = z.object({ id: z.string(), kind: z.enum(["holding", "watchlist"]).default("holding"), symbol: z.string().min(1).max(32), theme: z.string().max(100), qty: z.number().nonnegative(), buyPrice: z.number().nonnegative(), ltp: z.number().nonnegative(), buyDate: z.string(), conviction: z.enum(["High", "Med", "Low"]), reason: z.string().max(10000), preMortem: z.string().max(10000) });
 export const readPortfolio = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   const { data, error } = await context.supabase.from("portfolios").select("holdings").eq("user_id", context.userId).maybeSingle();
   if (error) throw new Error("Your portfolio could not be loaded.");

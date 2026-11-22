@@ -1,4 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useAccount } from "./account";
+import { AccountButton, usePrivatePortfolio } from "./PrivateData";
+import { useMarket, MarketTicker, LiveHeatmap } from "./Market";
+import { HealthReview, EventCalendar, SmartMoney } from "./DeskWidgets";
+import { voiceRank } from "./pronunciation";
+import type { ArchivedArticle } from "./news-model";
 import { Button } from "@/components/ui/button";
 import { StockLink } from "./StockLink";
 import { STOCKS } from "./stocks";
@@ -8,32 +15,11 @@ import { NewsCard } from "./NewsCard";
 import { Portfolio, ThemeExposure, themeWeights } from "./Portfolio";
 import { useSpeaker, useVoices } from "./speech";
 
-type Tab = "command" | "portfolio" | "themes" | "calendar" | "smart" | "prefs" | "voice";
+type Tab = "command" | "portfolio" | "themes" | "calendar" | "smart" | "prefs" | "voice" | "health";
 const TABS: Tab[] = ["command", "portfolio", "themes", "calendar", "smart", "prefs"];
-
-function Ticker() {
-  const [t, setT] = useState(TICKERS);
-  useEffect(() => { const i = setInterval(() => setT((x) => x.map((k) => { const d = (Math.random() - 0.5) * 0.08; return { ...k, value: k.value * (1 + d / 100), chg: k.chg + d }; })), 2500); return () => clearInterval(i); }, []);
-  const row = [...t, ...t];
-  return (
-    <div className="overflow-hidden border-y border-foreground bg-secondary text-sm">
-      <div className="flex w-max animate-ticker gap-8 py-1.5 px-4">
-        {row.map((k, i) => <span key={i} className="whitespace-nowrap"><b>{k.name}</b> {k.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} <span className={k.chg >= 0 ? "text-gain" : "text-loss"}>{k.chg >= 0 ? "▲" : "▼"} {k.chg.toFixed(2)}%</span></span>)}
-      </div>
-    </div>
-  );
-}
 
 function Widget({ title, children }: { title: string; children: React.ReactNode }) {
   return <section className="paper-card p-3"><h4 className="font-bold border-b-2 border-foreground mb-2 pb-1">{title}</h4><div className="text-sm space-y-1">{children}</div></section>;
-}
-
-function Heatmap() {
-  return <div className="grid grid-cols-3 gap-1">{SECTORS.map((s) => (
-    <div key={s.s} className={`p-2 text-center text-xs font-bold ${s.c >= 0 ? "bg-gain text-primary-foreground" : "bg-loss text-primary-foreground"}`} style={{ opacity: 0.45 + Math.min(Math.abs(s.c) / 2.5, 0.55) }}>{s.s}<br />{s.c > 0 ? "+" : ""}{s.c}%</div>))}</div>;
-}
-function Flows() {
-  return <>{FLOWS.map((f) => <div key={f.d} className="flex justify-between text-xs"><span>{f.d}</span><span className={f.fii >= 0 ? "text-gain" : "text-loss"}>FII {f.fii}</span><span className="text-gain">DII +{f.dii}</span></div>)}<p className="text-xs text-muted-foreground">₹ crore, cash segment</p></>;
 }
 
 function VoiceSettings() {
@@ -42,7 +28,7 @@ function VoiceSettings() {
   useEffect(() => setSel(localStorage.getItem("mmd-voice") || ""), []);
   const pick = (n: string) => { setSel(n); localStorage.setItem("mmd-voice", n); };
   const sample = (v: SpeechSynthesisVoice) => v.lang.startsWith("hi") ? "नमस्ते, आज निफ्टी में हल्की तेज़ी है।" : "Good morning. Nifty is trading slightly higher today.";
-  const sorted = [...voices].sort((a, b) => Number(/hi|IN/.test(b.lang)) - Number(/hi|IN/.test(a.lang)));
+  const sorted = [...voices].sort((a,b) => voiceRank(b)-voiceRank(a));
   return (
     <section className="space-y-3"><h2 className="text-2xl font-bold">🎙️ Voice Settings</h2>
       <p className="text-sm text-muted-foreground">Hindi & Indian English voices are listed first. Test one, then pick it — all Listen buttons will use it.</p>
@@ -62,25 +48,35 @@ export function Desk() {
   const [tab, setTab] = useState<Tab>("command");
   const [filingsOnly, setFilingsOnly] = useState(false);
   const [hideNoise, setHideNoise] = useState(false);
-  const [holdings, setHoldingsS] = useState<Holding[]>(SEED_HOLDINGS);
+  const { user } = useAccount();
+  const privatePortfolio = usePrivatePortfolio();
+  const holdings = privatePortfolio.holdings;
+  const setHoldings = privatePortfolio.setHoldings;
+  const market = useMarket();
+  const quotes = market.data?.quotes ?? [];
+  const [sector,setSector] = useState("All Sectors");
+  const [signalsOnly,setSignalsOnly] = useState(false);
+  const [industries,setIndustries] = useState<Record<string,boolean>>({});
+  const [articles,setArticles] = useState<ArchivedArticle[]>([]);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState("");
   const brief = useSpeaker();
-  useEffect(() => { const s = localStorage.getItem("mmd-holdings"); if (s) setHoldingsS(JSON.parse(s)); }, []);
-  const setHoldings = (h: Holding[]) => { setHoldingsS(h); localStorage.setItem("mmd-holdings", JSON.stringify(h)); };
+  useEffect(() => { const key = (e:KeyboardEvent) => { const target = e.target as HTMLElement; if ((e.key === "/" && !["INPUT","TEXTAREA","SELECT"].includes(target.tagName)) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k")) { e.preventDefault(); searchRef.current?.focus(); } }; document.addEventListener("keydown",key); return () => document.removeEventListener("keydown",key); },[]);
+  const filterSector = (s:string) => {setSector(s);setTab("command");};
 
-  const vix = TICKERS.find((t) => t.name === "INDIA VIX")?.value ?? 0;
-  const noise: [string, number] = vix < 13 ? ["Calm", 25] : vix < 18 ? ["Moderate", 55] : ["High Noise", 85];
-  const feed = NEWS.filter((n) => (!filingsOnly || n.filing) && (!hideNoise || n.tag !== "Noise"));
-  const changed = NEWS.filter((n) => n.tag === "Signal").length;
+
+  const vix = quotes.find(q => q.name === "INDIA VIX")?.value;
+  const noise: [string,number] = vix == null ? ["Unavailable",0] : vix < 13 ? ["Calm",25] : vix < 18 ? ["Moderate",55] : ["High Noise",85];
+  const changed = articles.filter(a => a.enrichment?.tag === "Signal").length;
 
   const { m } = themeWeights(holdings); const total = holdings.reduce((s, x) => s + x.qty * x.ltp, 0) || 1;
   const overTheme = Object.entries(m).filter(([, w]) => w > THEME_LIMIT);
-  const badSize = holdings.filter((h) => sizingVerdict((h.qty * h.ltp * 100) / total, h.conviction) !== "OK");
+  const badSize = holdings.filter((h) => h.kind !== "watchlist" && sizingVerdict((h.qty * h.ltp * 100) / total, h.conviction) !== "OK");
   const health = Math.max(0, 100 - overTheme.length * 15 - badSize.length * 8);
-  const redFlags = [...overTheme.map(([t, w]) => `${t} theme at ${w.toFixed(0)}% (>35%)`), ...badSize.map((h) => `${h.symbol} position size off-target`), ...NEWS.filter((n) => n.verification !== "Verified").map((n) => `Unverified: ${n.headline.en}`)];
+  const redFlags = [...badSize.map(h=>({symbol:h.symbol,text:`${h.symbol}: position size off-target`})),...holdings.filter(h=>h.kind==="watchlist" && h.preMortem).map(h=>({symbol:h.symbol,text:`${h.symbol}: watch ${h.preMortem}`}))];
   const hour = new Date().getHours();
-  const briefText = `${hour < 15 ? "Morning" : "Evening"} brief. NIFTY at ${TICKERS[0]?.value}, up ${TICKERS[0]?.chg}%. India VIX ${vix}, noise ${noise[0]}. ` + NEWS.filter((n) => n.tag !== "Noise").map((n) => `${n.headline[lang]}. ${n.tldr[lang].join(". ")}`).join(". ") + `. Portfolio health score ${health} out of 100.`;
+  const briefText = (lang === "hi" ? `बाज़ार सार। NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "अनुपलब्ध"}। VIX ${vix ?? "अनुपलब्ध"}। ` : lang === "hinglish" ? `Market brief. NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "unavailable"} par hai. VIX ${vix ?? "unavailable"}. ` : `Market brief. NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "unavailable"}. VIX ${vix ?? "unavailable"}. `) + articles.filter(a=>a.enrichment?.tag==="Signal").slice(0,8).map(a=> {const t=a.enrichment?.[lang];return `${t?.headline ?? a.title}. ${t?.tldr.join(". ") ?? a.summary}`;}).join(". ");
 
   const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
@@ -91,23 +87,25 @@ export function Desk() {
           <Button variant="ghost" className="lg:hidden border px-2 py-1" onClick={() => setMenu(!menu)}>☰ Menu</Button>
           <span className="text-muted-foreground">{today}</span>
           <div className="ml-auto flex flex-wrap gap-2">
+            <AccountButton />
             <select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="border px-2 py-1 bg-background">
               <option value="hinglish">Hinglish</option><option value="hi">शुद्ध हिंदी</option><option value="en">Pure English</option></select>
             <Button variant="ghost" onClick={() => setTab("voice")} className={`border px-2 py-1 ${tab === "voice" ? "bg-primary text-primary-foreground" : ""}`}>{tr("voice", lang)}</Button>
             <Button variant="ghost" onClick={() => (brief.state === "idle" ? brief.play(briefText) : brief.stop())} className="bg-primary text-primary-foreground px-2 py-1 font-bold">{brief.state === "idle" ? tr("brief", lang) : "⏹ Stop Brief"}</Button>
           </div>
         </div>
-        <div className="relative max-w-md mx-auto mt-3"><input aria-label="Search stocks" placeholder="Search stock name or symbol" className="border bg-background px-3 py-2 w-full text-sm" value={search} onChange={e => setSearch(e.target.value)} />{search.trim() && <div className="absolute z-30 w-full border bg-background p-3 space-y-2">{STOCKS.filter(s => (s.symbol + s.name).toLowerCase().includes(search.toLowerCase())).map(s => <div key={s.symbol}><StockLink symbol={s.symbol} label={`${s.name} · ${s.symbol}`} /></div>)}{!STOCKS.some(s => (s.symbol + s.name).toLowerCase().includes(search.toLowerCase())) && <StockLink symbol={search} label={`Research ${search.toUpperCase()}`} />}</div>}</div>
+        <div className="relative max-w-md mx-auto mt-3"><input ref={searchRef} aria-label="Search stocks" placeholder="Search stock name or symbol" className="border bg-background px-3 py-2 w-full text-sm" value={search} onChange={e => setSearch(e.target.value)} />{search.trim() && <div className="absolute z-30 w-full border bg-background p-3 space-y-2">{STOCKS.filter(s => (s.symbol + s.name).toLowerCase().includes(search.toLowerCase())).map(s => <div key={s.symbol}><StockLink symbol={s.symbol} label={`${s.name} · ${s.symbol}`} /></div>)}{!STOCKS.some(s => (s.symbol + s.name).toLowerCase().includes(search.toLowerCase())) && <StockLink symbol={search} label={`Research ${search.toUpperCase()}`} />}</div>}</div>
         <h1 className="text-center text-4xl sm:text-6xl font-bold tracking-tight py-2">MY MARKET DESK</h1>
         <div className="rule-double" />
         <p className="text-center text-xs italic text-muted-foreground py-1">Indian Markets · Signal over Noise · Est. 2026</p>
       </header>
-      <Ticker />
+      <MarketTicker quotes={quotes} />
+      <p className="max-w-[1400px] mx-auto px-4 text-xs text-muted-foreground py-1">Yahoo Finance · Last available quotes {market.data ? new Date(market.data.fetchedAt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}) + " IST" : "pending"} · Market-hours sync while this tab is visible.</p>
       <div className="max-w-[1400px] mx-auto px-4 py-2 flex flex-wrap gap-4 text-sm border-b">
-        <span>📰 <b>{tr("changed", lang)}</b> <span className="bg-highlight px-2 font-bold">{changed} key changes</span> · {NEWS.length} stories tracked</span>
+        <span>📰 <b>{tr("changed", lang)}</b> <Button variant="ghost" size="sm" className="bg-highlight font-bold" onClick={()=>{setSignalsOnly(!signalsOnly);setTab("command");}}>{changed} key changes</Button> · {articles.length} stories tracked</span>
         <span className="flex items-center gap-2 ml-auto">🔊 <b>{tr("noise", lang)}</b>
           <span className="w-32 h-2 bg-muted inline-block"><span className={`block h-2 ${Number(noise[1]) > 70 ? "bg-loss" : Number(noise[1]) > 40 ? "bg-warn" : "bg-gain"}`} style={{ width: `${noise[1]}%` }} /></span>
-          {noise[0]} (VIX {vix})</span>
+          {noise[0]} (VIX {vix?.toFixed(2) ?? "—"})</span>
       </div>
 
       <div className="max-w-[1400px] mx-auto px-4 py-4 grid gap-4 lg:grid-cols-[200px_1fr_300px]">
@@ -119,34 +117,32 @@ export function Desk() {
         <main className="space-y-4 min-w-0">
           {tab === "command" && <>
             <h2 className="text-2xl font-bold border-b-2 border-foreground">{tr("command", lang)}</h2>
-            {filingsOnly && <p className="text-xs bg-highlight px-2 py-1">Showing BSE/NSE filings only</p>}
-            <LiveNews onNews={() => {}} />
-            {feed.map((n) => <NewsCard key={n.id} n={n} lang={lang} />)}
+            {(sector !== "All Sectors" || signalsOnly) && <div className="flex items-center gap-2 text-sm"><span>{sector} {signalsOnly ? "· Signal stories" : ""}</span><Button variant="link" size="sm" onClick={()=>{setSector("All Sectors");setSignalsOnly(false);}}>Clear Filter</Button></div>}
+            <LiveNews lang={lang} holdings={holdings} sector={sector} setSector={setSector} signalsOnly={signalsOnly} filingsOnly={filingsOnly} hideNoise={hideNoise} industries={industries} onArticles={setArticles} />
           </>}
-          {tab === "portfolio" && <Portfolio holdings={holdings} setHoldings={setHoldings} />}
+          {tab === "portfolio" && (user ? <>{privatePortfolio.loading ? <p>Loading private portfolio…</p> : <Portfolio key={user.id} holdings={holdings} setHoldings={setHoldings} />}{privatePortfolio.saving && <p role="status">Saving private portfolio…</p>}{privatePortfolio.error && <p role="alert" className="text-loss">Private portfolio could not be loaded or saved. Try again.</p>}</> : <section><h2 className="text-2xl font-bold mb-4">My Private Portfolio & Watchlist</h2><Button asChild><Link to="/auth">Sign in to view your private stocks</Link></Button></section>)}
           {tab === "themes" && <ThemeExposure holdings={holdings} />}
-          {tab === "calendar" && <section className="space-y-3"><h2 className="text-2xl font-bold">Dual Event Calendar</h2>
-            <div className="grid sm:grid-cols-2 gap-4">{[true, false].map((w) => (
-              <Widget key={String(w)} title={w ? "⭐ My Watchlist Events" : "🌐 General Market Events"}>
-                {EVENTS.filter((e) => e.watch === w).map((e) => <div key={e.title} className="flex gap-3 border-b border-dashed py-1"><b className="w-14 shrink-0">{e.date}</b>{e.title}</div>)}
-              </Widget>))}</div></section>}
-          {tab === "smart" && <section className="space-y-3"><h2 className="text-2xl font-bold">Smart Money & Heatmaps</h2>
-            <div className="grid sm:grid-cols-2 gap-4"><Widget title="FII / DII Flows"><Flows /></Widget><Widget title="Sector Heatmap"><Heatmap /></Widget></div></section>}
+          {tab === "calendar" && <EventCalendar articles={articles} holdings={holdings} />}
+          {tab === "smart" && <><SmartMoney holdings={holdings} /><LiveHeatmap quotes={quotes} onSector={filterSector} /></>}
+          {tab === "health" && <HealthReview holdings={holdings} />}
           {tab === "prefs" && <section className="space-y-3"><h2 className="text-2xl font-bold">Feed Preferences</h2>
-            <label className="paper-card p-3 flex items-center justify-between"><span><b>BSE/NSE Filings Only</b><br /><span className="text-xs text-muted-foreground">Only show official exchange filings</span></span><input type="checkbox" className="size-5 accent-foreground" checked={filingsOnly} onChange={(e) => setFilingsOnly(e.target.checked)} /></label>
-            <label className="paper-card p-3 flex items-center justify-between"><b>Hide "Noise" stories</b><input type="checkbox" className="size-5 accent-foreground" checked={hideNoise} onChange={(e) => setHideNoise(e.target.checked)} /></label></section>}
+            <label className="border-b p-3 flex items-center justify-between"><span><b>BSE/NSE Filings Only</b></span><input type="checkbox" className="size-5 accent-foreground" checked={filingsOnly} onChange={(e) => setFilingsOnly(e.target.checked)} /></label>
+            <label className="border-b p-3 flex items-center justify-between"><b>Hide Noise stories</b><input type="checkbox" className="size-5 accent-foreground" checked={hideNoise} onChange={(e) => setHideNoise(e.target.checked)} /></label>
+            {["Defence","Banking","IT","Auto","Pharma","Semiconductors","Textiles"].map(i=><div key={i} className="flex justify-between border-b py-2 text-sm"><b>{i}</b><Button variant="outline" size="sm" onClick={()=>setIndustries({...industries,[i]:industries[i]===false})}>{industries[i]===false ? "+ Show More" : "− Hide"}</Button></div>)}
+            <p className="text-xs text-muted-foreground">Direct feed blocks are reported in Refresh details; no proxy bypasses or social rumours are used.</p></section>}
+
           {tab === "voice" && <VoiceSettings />}
         </main>
 
         <aside className="space-y-4">
-          <Widget title="🚩 Instant Red Flag Alerts">{redFlags.length ? redFlags.map((r) => <p key={r} className="text-loss text-xs">• {r}</p>) : <p>All clear.</p>}</Widget>
-          <Widget title="❤️ Weekly Portfolio Health"><p className="text-4xl font-bold">{health}<span className="text-base">/100</span></p><p className="text-xs text-muted-foreground">{overTheme.length} theme & {badSize.length} sizing issues</p></Widget>
-          <Widget title={hour < 15 ? "☀️ Morning Market Brief" : "🌙 Evening Market Brief"}><p className="text-xs">NIFTY {(TICKERS[0]?.chg ?? 0) > 0 ? "opened firm" : "under pressure"}; banks led by HDFC Bank's NIM beat. L&T order win lifts infra. VIX {vix} — {noise[0].toLowerCase()} session expected.</p></Widget>
-          <Widget title="💰 Smart Money FII/DII"><Flows /></Widget>
-          <Widget title="🗺️ Sector Heatmap"><Heatmap /></Widget>
+          <Widget title="🚩 Instant Red Flag Alerts">{user ? <>{redFlags.map(r=><p key={r.symbol+r.text} className="text-loss text-xs"><StockLink symbol={r.symbol} label={r.text}/></p>)}{overTheme.map(([t,w])=><Button key={t} variant="link" className="text-loss text-xs whitespace-normal h-auto" onClick={()=>setTab("health")}>{t} theme at {w.toFixed(0)}% (&gt;35%)</Button>)}{!redFlags.length && !overTheme.length && <p>No portfolio rule flags.</p>}</> : <p>Sign in for private stock alerts.</p>}</Widget>
+          <Widget title="❤️ Weekly Portfolio Health"><Button variant="ghost" className="h-auto text-4xl font-bold p-0" onClick={()=>setTab("health")}>{user ? health : "—"}<span className="text-base">/100</span></Button><p className="text-xs text-muted-foreground">{overTheme.length} theme & {badSize.length} sizing issues</p></Widget>
+          <Widget title={hour < 15 ? "☀️ Morning Market Brief" : "🌙 Evening Market Brief"}><p className="text-xs">{lang==="hi" ? "NIFTY और VIX का नवीनतम उपलब्ध सार।" : lang==="hinglish" ? "NIFTY aur VIX ka latest available brief." : "Latest available NIFTY and VIX brief."}</p>{articles.filter(a=>a.enrichment?.tag==="Signal").slice(0,3).map(a=><a key={a.id} href={a.link} target="_blank" rel="noopener noreferrer" className="block underline text-xs">{a.enrichment?.[lang].headline ?? a.title} ↗</a>)}<div className="flex flex-wrap gap-2 text-xs">{holdings.slice(0,5).map(h=><StockLink key={h.id} symbol={h.symbol}/>)}</div>{brief.error && <p className="text-xs text-muted-foreground">{brief.error}</p>}</Widget>
+          <Widget title="💰 Smart Money FII/DII"><Button variant="link" onClick={()=>setTab("smart")}>Cash / Index F&O / Stock F&O</Button><p className="text-xs text-muted-foreground">Source-backed institutional figures only.</p></Widget>
+          <Widget title="🗺️ Sector Heatmap"><LiveHeatmap quotes={quotes} onSector={filterSector}/></Widget>
         </aside>
       </div>
-      <footer className="text-center text-xs text-muted-foreground py-4 border-t">Sample data for demonstration. Not investment advice.</footer>
+      <footer className="text-center text-xs text-muted-foreground py-4 border-t">Publisher headlines and Yahoo quotes may be delayed. AI analysis is not investment advice.</footer>
     </div>
   );
 }

@@ -17,7 +17,8 @@ export const getQuotes = createServerFn({ method:"GET" }).handler(async (): Prom
       if(!r.ok) throw new Error("Quotes unavailable");
       const body = await r.json() as Chart; const meta = body.chart?.result?.[0]?.meta;
       if(typeof meta?.regularMarketPrice !== "number") throw new Error("Missing quote");
-      const previous = meta.chartPreviousClose ?? meta.previousClose ?? meta.regularMarketPrice;
+      const closes = body.chart?.result?.[0]?.indicators?.quote?.[0]?.close.filter((v):v is number=>typeof v==="number") ?? [];
+      const previous = meta.previousClose ?? closes.at(-2) ?? meta.chartPreviousClose ?? meta.regularMarketPrice;
       return { symbol,value:meta.regularMarketPrice,chg:previous ? (meta.regularMarketPrice/previous-1)*100 : 0,time:new Date((meta.regularMarketTime ?? Date.now()/1000)*1000).toISOString() };
     } catch { return { symbol,error:`Yahoo: ${symbol} quote unavailable; last saved price retained.` }; }
   }));

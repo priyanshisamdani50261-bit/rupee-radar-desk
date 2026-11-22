@@ -114,6 +114,7 @@ export const SECTORS = [
 ];
 
 export type Holding = {
+  kind?: "holding" | "watchlist";
   id: string; symbol: string; theme: string; qty: number; buyPrice: number; ltp: number;
   buyDate: string; conviction: "High" | "Med" | "Low"; reason: string; preMortem: string;
 };

@@ -14,6 +14,7 @@ import { EVENTS, FLOWS, NEWS, SECTORS, SEED_HOLDINGS, TICKERS, THEME_LIMIT, sizi
 import { NewsCard } from "./NewsCard";
 import { Portfolio, ThemeExposure, themeWeights } from "./Portfolio";
 import { useSpeaker, useVoices } from "./speech";
+import { translatedFor, useTranslations } from "./translation";
 
 type Tab = "command" | "portfolio" | "themes" | "calendar" | "smart" | "prefs" | "voice" | "health";
 const TABS: Tab[] = ["command", "portfolio", "themes", "calendar", "smart", "prefs"];
@@ -62,6 +63,8 @@ export function Desk() {
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState("");
   const brief = useSpeaker();
+  // Make sure the top Signal stories (used by the audio brief + sidebar) are translated into the selected language.
+  useTranslations(articles.filter(a => a.enrichment?.tag === "Signal").slice(0, 8), lang);
   useEffect(() => { const key = (e:KeyboardEvent) => { const target = e.target as HTMLElement; if ((e.key === "/" && !["INPUT","TEXTAREA","SELECT"].includes(target.tagName)) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k")) { e.preventDefault(); searchRef.current?.focus(); } }; document.addEventListener("keydown",key); return () => document.removeEventListener("keydown",key); },[]);
   const filterSector = (s:string) => {setSector(s);setTab("command");};
 
@@ -76,7 +79,7 @@ export function Desk() {
   const health = Math.max(0, 100 - overTheme.length * 15 - badSize.length * 8);
   const redFlags = [...badSize.map(h=>({symbol:h.symbol,text:`${h.symbol}: position size off-target`})),...holdings.filter(h=>h.kind==="watchlist" && h.preMortem).map(h=>({symbol:h.symbol,text:`${h.symbol}: watch ${h.preMortem}`}))];
   const hour = new Date().getHours();
-  const briefText = (lang === "hi" ? `बाज़ार सार। NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "अनुपलब्ध"}। VIX ${vix ?? "अनुपलब्ध"}। ` : lang === "hinglish" ? `Market brief. NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "unavailable"} par hai. VIX ${vix ?? "unavailable"}. ` : `Market brief. NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "unavailable"}. VIX ${vix ?? "unavailable"}. `) + articles.filter(a=>a.enrichment?.tag==="Signal").slice(0,8).map(a=> {const t=a.enrichment?.[lang];return `${t?.headline ?? a.title}. ${t?.tldr.join(". ") ?? a.summary}`;}).join(". ");
+  const briefText = (lang === "hi" ? `बाज़ार सार। NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "अनुपलब्ध"}। VIX ${vix ?? "अनुपलब्ध"}। ` : lang === "hinglish" ? `Market brief. NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "unavailable"} par hai. VIX ${vix ?? "unavailable"}. ` : `Market brief. NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "unavailable"}. VIX ${vix ?? "unavailable"}. `) + articles.filter(a=>a.enrichment?.tag==="Signal").slice(0,8).map(a=> {const t=translatedFor(a,lang);return `${t?.headline ?? a.title}. ${t?.tldr.join(". ") ?? a.summary}`;}).join(". ");
 
   const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
@@ -91,7 +94,7 @@ export function Desk() {
             <select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="border px-2 py-1 bg-background">
               <option value="hinglish">Hinglish</option><option value="hi">शुद्ध हिंदी</option><option value="en">Pure English</option></select>
             <Button variant="ghost" onClick={() => setTab("voice")} className={`border px-2 py-1 ${tab === "voice" ? "bg-primary text-primary-foreground" : ""}`}>{tr("voice", lang)}</Button>
-            <Button variant="ghost" onClick={() => (brief.state === "idle" ? brief.play(briefText) : brief.stop())} className="bg-primary text-primary-foreground px-2 py-1 font-bold">{brief.state === "idle" ? tr("brief", lang) : "⏹ Stop Brief"}</Button>
+            <Button variant="ghost" onClick={() => (brief.state === "idle" ? brief.play(briefText, lang) : brief.stop())} className="bg-primary text-primary-foreground px-2 py-1 font-bold">{brief.state === "idle" ? tr("brief", lang) : "⏹ Stop Brief"}</Button>
           </div>
         </div>
         <div className="relative max-w-md mx-auto mt-3"><input ref={searchRef} aria-label="Search stocks" placeholder="Search stock name or symbol" className="border bg-background px-3 py-2 w-full text-sm" value={search} onChange={e => setSearch(e.target.value)} />{search.trim() && <div className="absolute z-30 w-full border bg-background p-3 space-y-2">{STOCKS.filter(s => (s.symbol + s.name).toLowerCase().includes(search.toLowerCase())).map(s => <div key={s.symbol}><StockLink symbol={s.symbol} label={`${s.name} · ${s.symbol}`} /></div>)}{!STOCKS.some(s => (s.symbol + s.name).toLowerCase().includes(search.toLowerCase())) && <StockLink symbol={search} label={`Research ${search.toUpperCase()}`} />}</div>}</div>
@@ -137,7 +140,7 @@ export function Desk() {
         <aside className="space-y-4">
           <Widget title="🚩 Instant Red Flag Alerts">{user ? <>{redFlags.map(r=><p key={r.symbol+r.text} className="text-loss text-xs"><StockLink symbol={r.symbol} label={r.text}/></p>)}{overTheme.map(([t,w])=><Button key={t} variant="link" className="text-loss text-xs whitespace-normal h-auto" onClick={()=>setTab("health")}>{t} theme at {w.toFixed(0)}% (&gt;35%)</Button>)}{!redFlags.length && !overTheme.length && <p>No portfolio rule flags.</p>}</> : <p>Sign in for private stock alerts.</p>}</Widget>
           <Widget title="❤️ Weekly Portfolio Health"><Button variant="ghost" className="h-auto text-4xl font-bold p-0" onClick={()=>setTab("health")}>{user ? health : "—"}<span className="text-base">/100</span></Button><p className="text-xs text-muted-foreground">{overTheme.length} theme & {badSize.length} sizing issues</p></Widget>
-          <Widget title={hour < 15 ? "☀️ Morning Market Brief" : "🌙 Evening Market Brief"}><p className="text-xs">{lang==="hi" ? "NIFTY और VIX का नवीनतम उपलब्ध सार।" : lang==="hinglish" ? "NIFTY aur VIX ka latest available brief." : "Latest available NIFTY and VIX brief."}</p>{articles.filter(a=>a.enrichment?.tag==="Signal").slice(0,3).map(a=><a key={a.id} href={a.link} target="_blank" rel="noopener noreferrer" className="block underline text-xs">{a.enrichment?.[lang].headline ?? a.title} ↗</a>)}<div className="flex flex-wrap gap-2 text-xs">{holdings.slice(0,5).map(h=><StockLink key={h.id} symbol={h.symbol}/>)}</div>{brief.error && <p className="text-xs text-muted-foreground">{brief.error}</p>}</Widget>
+          <Widget title={hour < 15 ? "☀️ Morning Market Brief" : "🌙 Evening Market Brief"}><p className="text-xs">{lang==="hi" ? "NIFTY और VIX का नवीनतम उपलब्ध सार।" : lang==="hinglish" ? "NIFTY aur VIX ka latest available brief." : "Latest available NIFTY and VIX brief."}</p>{articles.filter(a=>a.enrichment?.tag==="Signal").slice(0,3).map(a=><a key={a.id} href={a.link} target="_blank" rel="noopener noreferrer" className="block underline text-xs">{translatedFor(a,lang)?.headline ?? a.title} ↗</a>)}<div className="flex flex-wrap gap-2 text-xs">{holdings.slice(0,5).map(h=><StockLink key={h.id} symbol={h.symbol}/>)}</div>{brief.error && <p className="text-xs text-muted-foreground">{brief.error}</p>}</Widget>
           <Widget title="💰 Smart Money FII/DII"><Button variant="link" onClick={()=>setTab("smart")}>Cash / Index F&O / Stock F&O</Button><p className="text-xs text-muted-foreground">Source-backed institutional figures only.</p></Widget>
           <Widget title="🗺️ Sector Heatmap"><LiveHeatmap quotes={quotes} onSector={filterSector}/></Widget>
         </aside>

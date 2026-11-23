@@ -78,10 +78,11 @@ export function Desk() {
   const badSize = holdings.filter((h) => h.kind !== "watchlist" && sizingVerdict((h.qty * h.ltp * 100) / total, h.conviction) !== "OK");
   const health = Math.max(0, 100 - overTheme.length * 15 - badSize.length * 8);
   const redFlags = [...badSize.map(h=>({symbol:h.symbol,text:`${h.symbol}: position size off-target`})),...holdings.filter(h=>h.kind==="watchlist" && h.preMortem).map(h=>({symbol:h.symbol,text:`${h.symbol}: watch ${h.preMortem}`}))];
-  const hour = new Date().getHours();
+  const [hour,setHour] = useState(9);
+  const [today,setToday] = useState("");
+  useEffect(() => { const update = () => { const now = new Date(); setHour(Number(new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kolkata",hour:"2-digit",hourCycle:"h23"}).format(now))); setToday(now.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",weekday:"long",day:"numeric",month:"long",year:"numeric"})); }; update(); const timer=setInterval(update,60000);return()=>clearInterval(timer); },[]);
   const briefText = (lang === "hi" ? `बाज़ार सार। NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "अनुपलब्ध"}। VIX ${vix ?? "अनुपलब्ध"}। ` : lang === "hinglish" ? `Market brief. NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "unavailable"} par hai. VIX ${vix ?? "unavailable"}. ` : `Market brief. NIFTY ${quotes.find(q=>q.name==="NIFTY 50")?.value ?? "unavailable"}. VIX ${vix ?? "unavailable"}. `) + articles.filter(a=>a.enrichment?.tag==="Signal").slice(0,8).map(a=> {const t=translatedFor(a,lang);return `${t?.headline ?? a.title}. ${t?.tldr.join(". ") ?? a.summary}`;}).join(". ");
 
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   return (
     <div className="min-h-screen">

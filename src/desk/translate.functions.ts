@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { GEMINI_ENDPOINT } from "./gemini-config";
 
 const LANGUAGE_RULES = {
   en: "Pure English: clear, plain Indian financial-press English.",
@@ -9,7 +10,7 @@ const LANGUAGE_RULES = {
 } as const;
 
 const itemSchema = z.object({ title: z.string().max(500), summary: z.string().max(1200) });
-const outputSchema = z.array(z.object({ index: z.number().int(), headline: z.string().min(1), tldr: z.array(z.string().min(1)).min(1) }));
+const outputSchema = z.array(z.object({ index: z.number().int(), headline: z.string().min(1), tldr: z.array(z.string().min(1)).length(3) }));
 
 /**
  * Translates news headlines + 3-bullet TLDRs with gemini-2.5-flash.
@@ -28,7 +29,7 @@ For every item return {index, headline, tldr}. headline is a faithful translatio
 Keep these in English/Latin letters exactly as written, in every language: stock ticker symbols (e.g. HDFCBANK, TATAMOTORS), NIFTY, NIFTY 50, BANK NIFTY, SENSEX, VIX, INDIA VIX, SEBI, RBI, BSE, NSE, FII, DII, IPO, QIP, NIM, P/E, EBITDA, GDP, F&O, and all numbers, percentages and ₹ amounts.
 Return ONLY a JSON array in input order. Items: ${JSON.stringify(data.items.map((a, index) => ({ index, title: a.title, summary: a.summary })))}`;
 
-    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+    const res = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       signal: AbortSignal.timeout(50000),
@@ -39,8 +40,9 @@ Return ONLY a JSON array in input order. Items: ${JSON.stringify(data.items.map(
       }),
     });
     if (!res.ok) {
-      if (res.status === 429) throw new Error("Gemini quota reached. Translations will retry after your quota resets.");
+      if (res.status === 429) throw new Error("Gemini quota reached. Try translating again after your quota resets.");
       if ([401, 403].includes(res.status)) throw new Error("Gemini access was denied; check the saved GEMINI_API_KEY.");
+      if (res.status === 404) throw new Error("Google could not provide the selected Gemini model for this account. Original headlines remain available.");
       throw new Error(`Gemini could not translate these stories (${res.status}).`);
     }
     const body = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };

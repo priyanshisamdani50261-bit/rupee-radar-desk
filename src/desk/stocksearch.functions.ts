@@ -25,11 +25,12 @@ export const searchIndianStocks = createServerFn({ method: "POST" })
     const indian = (body.quotes ?? [])
       .filter((q) => q.symbol && /\.(NS|BO)$/i.test(q.symbol) && (!q.quoteType || q.quoteType === "EQUITY"))
       // NSE listing first, keep Yahoo's relevance order inside each group
-      .sort((a, b) => Number(b.symbol!.toUpperCase().endsWith(".NS")) - Number(a.symbol!.toUpperCase().endsWith(".NS")));
+      .sort((a, b) => Number(b.symbol?.toUpperCase().endsWith(".NS")) - Number(a.symbol?.toUpperCase().endsWith(".NS")));
     const seen = new Set<string>();
     const hits: Hit[] = [];
     for (const q of indian) {
-      const yahooSymbol = q.symbol!.toUpperCase();
+      if (!q.symbol) continue;
+      const yahooSymbol = q.symbol.toUpperCase();
       const symbol = yahooSymbol.replace(/\.(NS|BO)$/, "");
       if (seen.has(symbol)) continue; // same company on NSE + BSE -> show once
       seen.add(symbol);

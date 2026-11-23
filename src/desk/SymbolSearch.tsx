@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { searchIndianStocks } from "./stocksearch.functions";
+import { Button } from "@/components/ui/button";
 
 export type StockHit = { yahooSymbol: string; symbol: string; name: string; exchange: "NSE" | "BSE"; sector: string };
 
@@ -47,7 +48,7 @@ export function SymbolSearch({ value, onChange, onPick }: { value: string; onCha
     if (!open || !hits.length) return;
     if (e.key === "ArrowDown") { e.preventDefault(); setActive((active + 1) % hits.length); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActive((active - 1 + hits.length) % hits.length); }
-    else if (e.key === "Enter" && active >= 0) { e.preventDefault(); choose(hits[active]!); }
+    else if (e.key === "Enter" && active >= 0) { const hit = hits[active]; if (hit) { e.preventDefault(); choose(hit); } }
   };
 
   const showPanel = open && query.length >= 2;
@@ -70,16 +71,16 @@ export function SymbolSearch({ value, onChange, onPick }: { value: string; onCha
           {!busy && !err && !hits.length && <li className="px-3 py-2 text-xs text-muted-foreground">No NSE / BSE stock found. The typed symbol will be used as-is.</li>}
           {hits.map((h, i) => (
             <li key={h.yahooSymbol} role="option" aria-selected={i === active}>
-              <button
+              <Button variant="ghost"
                 type="button"
                 // onMouseDown (not onClick) so the pick lands before the input loses focus
                 onMouseDown={(e) => { e.preventDefault(); choose(h); }}
                 onMouseEnter={() => setActive(i)}
-                className={`w-full text-left px-3 py-2 border-b text-sm ${i === active ? "bg-accent" : ""}`}
+                className={`w-full h-auto whitespace-normal text-left justify-start block px-3 py-2 border-b text-sm ${i === active ? "bg-accent" : ""}`}
               >
                 <b>{h.name}</b>
                 <span className="block text-xs text-muted-foreground">{h.symbol} · {h.exchange}{h.sector ? ` · ${h.sector}` : ""}</span>
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

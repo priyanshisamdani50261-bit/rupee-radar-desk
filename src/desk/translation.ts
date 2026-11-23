@@ -11,6 +11,7 @@ export type Tr = { headline: string; tldr: string[] };
 const LS_PREFIX = "mmd-tr-v1:";
 const mem = new Map<string, Tr>();
 const inflight = new Set<string>();
+const failed = new Set<string>();
 const listeners = new Set<() => void>();
 let version = 0;
 const keyOf = (id: string, lang: Lang) => `${id}:${lang}`;
@@ -18,6 +19,9 @@ const emit = () => { version++; listeners.forEach((l) => l()); };
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
 
 function cached(key: string): Tr | undefined {
+  return mem.get(key);
+}
+function hydrate(key: string): Tr | undefined {
   const hit = mem.get(key);
   if (hit) return hit;
   if (typeof window === "undefined") return undefined;
@@ -25,7 +29,7 @@ function cached(key: string): Tr | undefined {
     const raw = localStorage.getItem(LS_PREFIX + key);
     if (!raw) return undefined;
     const v = JSON.parse(raw) as Partial<Tr>;
-    if (typeof v.headline === "string" && Array.isArray(v.tldr) && v.tldr.length) {
+    if (typeof v.headline === "string" && Array.isArray(v.tldr) && v.tldr.length === 3) {
       const t = { headline: v.headline, tldr: v.tldr.map(String) };
       mem.set(key, t);
       return t;
@@ -58,8 +62,14 @@ export function useTranslations(articles: ArchivedArticle[], lang: Lang) {
   const signature = missing.map((a) => a.id).join(",");
 
   useEffect(() => {
+    let loaded = false;
+    articles.forEach(a => { const key = keyOf(a.id,lang); if (!mem.has(key) && hydrate(key)) loaded = true; });
+    if (loaded) emit();
+  }, [signature,lang]); // public publisher text only; hydrate after render to avoid SSR mismatches
+
+  useEffect(() => {
     if (!user) return;
-    const todo = missing.filter((a) => !inflight.has(keyOf(a.id, lang))).slice(0, 40);
+    const todo = articles.filter((a) => !translatedFor(a,lang) && !inflight.has(keyOf(a.id, lang)) && !failed.has(keyOf(a.id,lang))).slice(0, 40);
     if (!todo.length) return;
     todo.forEach((a) => inflight.add(keyOf(a.id, lang)));
     emit();
@@ -73,6 +83,7 @@ export function useTranslations(articles: ArchivedArticle[], lang: Lang) {
           emit();
         }
       } catch (e) {
+        todo.forEach(a => failed.add(keyOf(a.id,lang)));
         setError(e instanceof Error ? e.message : "Translation failed. Original headlines are shown.");
       } finally {
         todo.forEach((a) => inflight.delete(keyOf(a.id, lang)));

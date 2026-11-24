@@ -57,6 +57,12 @@ export function useTranslations(articles: ArchivedArticle[], lang: Lang) {
   useTranslationTick();
   const [translating, setTranslating] = useState(false);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  function retry() {
+    articles.forEach(a => failed.delete(keyOf(a.id,lang)));
+    setError("");
+    setAttempt(v => v + 1);
+  }
 
   const missing = articles.filter((a) => !translatedFor(a, lang));
   const signature = missing.map((a) => a.id).join(",");
@@ -84,7 +90,7 @@ export function useTranslations(articles: ArchivedArticle[], lang: Lang) {
         }
       } catch (e) {
         todo.forEach(a => failed.add(keyOf(a.id,lang)));
-        setError(e instanceof Error ? e.message : "Translation failed. Original headlines are shown.");
+        setError(e instanceof Error && !/timeout|abort/i.test(e.message) ? e.message : "Google Gemini took too long to respond. Try again shortly; original headlines are shown.");
       } finally {
         todo.forEach((a) => inflight.delete(keyOf(a.id, lang)));
         setTranslating(false);
@@ -92,7 +98,7 @@ export function useTranslations(articles: ArchivedArticle[], lang: Lang) {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, lang, user?.id]);
+  }, [signature, lang, user?.id, attempt]);
 
-  return { translating, error, pending: missing.length };
+  return { translating, error, pending: missing.length, retry };
 }

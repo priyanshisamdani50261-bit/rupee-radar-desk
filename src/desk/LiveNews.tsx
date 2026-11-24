@@ -22,7 +22,7 @@ export function LiveNews({ onNews, lang = "en", holdings = [], sector = "All Sec
   useEffect(() => { if (query.data) onArticles?.(query.data.articles); },[query.data,onArticles]);
   async function run() { setBusy(true); setErrors([]); try { const r = await refresh(); setErrors(r.errors); onNews?.(r.articles); await cache.invalidateQueries({ queryKey:["news-archive"] }); } catch(e) { setErrors([e instanceof Error ? e.message : "News refresh failed."]); } finally { setBusy(false); } }
   const articles = (query.data?.articles ?? []).filter(a => sources.some(source=>sourceMatches(a.source,source)) && (!filingsOnly || /BSE|NSE|SEBI|RBI/.test(a.source)) && (!signalsOnly || a.enrichment?.tag === "Signal") && (!hideNoise || a.enrichment?.tag !== "Noise") && (sector === "All Sectors" || a.enrichment?.sectors.some(s => s.name === sector) || (a.title+" "+a.summary).toLowerCase().includes(sector.toLowerCase())) && !a.enrichment?.sectors.some(s => industries[s.name] === false) && (!node || (a.title+" "+a.summary+JSON.stringify(a.enrichment)).toLowerCase().includes(node.toLowerCase())));
-  // Translate every visible story that has no text in the selected language yet (Gemini 2.5 Flash, cached).
+  // Translate visible stories using the shared active Gemini model and cache each language.
   const tx = useTranslations(articles, lang);
   return <section className="space-y-3">
     <div className="flex flex-wrap gap-2 items-center"><Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><Button variant="outline" size="sm"><CalendarIcon />Date {date}</Button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" className="pointer-events-auto" selected={date ? new Date(`${date}T12:00:00`) : undefined} disabled={{ after:new Date() }} onSelect={d => { if(d) { setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`); setOpen(false); } }} /></PopoverContent></Popover>
@@ -33,7 +33,7 @@ export function LiveNews({ onNews, lang = "en", holdings = [], sector = "All Sec
     {query.error && <p role="alert" className="text-loss text-sm">News archive could not be loaded.</p>}
     {query.isFetching && <p className="text-xs text-muted-foreground">Loading saved headlines…</p>}
     {tx.translating && <p role="status" className="text-xs text-muted-foreground">Translating visible stories with Gemini…</p>}
-    {tx.error && <p role="alert" className="text-xs text-loss">{tx.error}</p>}
+    {tx.error && <div className="flex items-center gap-2"><p role="alert" className="text-xs text-loss">{tx.error}</p><Button variant="ghost" size="icon" aria-label="Retry translation" title="Retry translation" onClick={tx.retry} disabled={tx.translating}><RefreshCw/></Button></div>}
     {!query.isFetching && !articles.length && <p className="text-sm text-muted-foreground py-6 border-y">No saved stories match this date and these filters.</p>}
     {articles.map(a => <FeedCard key={a.id} article={a} lang={lang} holdings={holdings} />)}
   </section>;

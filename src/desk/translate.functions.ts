@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { GEMINI_ENDPOINT } from "./gemini-config";
+import { GEMINI_ENDPOINT, geminiUnavailable } from "./gemini-config";
 
 const LANGUAGE_RULES = {
   en: "Pure English: clear, plain Indian financial-press English.",
@@ -13,7 +13,7 @@ const itemSchema = z.object({ title: z.string().max(500), summary: z.string().ma
 const outputSchema = z.array(z.object({ index: z.number().int(), headline: z.string().min(1), tldr: z.array(z.string().min(1)).length(3) }));
 
 /**
- * Translates news headlines + 3-bullet TLDRs with gemini-2.5-flash.
+ * Translates news headlines + 3-bullet TLDRs with the shared active Gemini model.
  * Signed-in users only, so the shared GEMINI_API_KEY quota cannot be drained anonymously
  * (same rule as refreshNews). Returns one entry per input item, null where Gemini gave nothing usable.
  */
@@ -35,16 +35,10 @@ Return ONLY a JSON array in input order. Items: ${JSON.stringify(data.items.map(
       signal: AbortSignal.timeout(50000),
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        // thinkingBudget 0 = fastest response; translation does not need reasoning tokens.
-        generationConfig: { responseMimeType: "application/json", temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
+        generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
       }),
     });
-    if (!res.ok) {
-      if (res.status === 429) throw new Error("Gemini quota reached. Try translating again after your quota resets.");
-      if ([401, 403].includes(res.status)) throw new Error("Gemini access was denied; check the saved GEMINI_API_KEY.");
-      if (res.status === 404) throw new Error("Google could not provide the selected Gemini model for this account. Original headlines remain available.");
-      throw new Error(`Gemini could not translate these stories (${res.status}).`);
-    }
+    if (!res.ok) throw new Error(geminiUnavailable(res.status));
     const body = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
     const raw = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").replace(/^```(?:json)?\s*|\s*```$/g, "");
     if (!raw) throw new Error("Gemini returned no translation.");

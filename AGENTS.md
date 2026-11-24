@@ -32,3 +32,4 @@ use the editor.
 - Stock research uses a public dynamic stock route with four in-page tabs; stock links share one symbol resolver to keep navigation consistent.
 - Fetch RSS server-side from fixed publisher URLs and parse into plain-text articles; report blocked sources independently without a public proxy.
 - Private portfolio and note operations derive ownership from verified server middleware and use owner-only database policies; never accept an owner ID from the browser.
+- All Gemini consumers share one browser-safe endpoint configuration; keep private keys inside server handlers so model upgrades stay consistent without exposing credentials.

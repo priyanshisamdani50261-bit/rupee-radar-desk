@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { convictionScore, relativeReturn, mentionedStocks } from "./stocks";
 import { parseFeed, RSS_SOURCES } from "./rss";
-import { GEMINI_ENDPOINT, GEMINI_MODEL } from "./gemini-config";
+import { GEMINI_ENDPOINT, GEMINI_MODEL, geminiUnavailable } from "./gemini-config";
 import { isMarketOpen,istDate,prohibitedRumour,sourceMatches } from "./news-model";
 import { preprocessSpeech } from "./pronunciation";
 import { themeWeights } from "./Portfolio";
@@ -14,6 +14,7 @@ describe("Stock research rules", () => {
   it("recognizes stock names in news", () => expect(mentionedStocks("HDFC Bank reports results")[0]?.symbol).toBe("HDFCBANK"));
   it("keeps original BSE and ET sources alongside Moneycontrol publisher search", () => expect(RSS_SOURCES.slice(0,3).map(s => new URL(s.url).hostname)).toEqual(["www.bseindia.com", "economictimes.indiatimes.com", "news.google.com"]));
   it("uses the approved Gemini 3.8 Flash generateContent endpoint",()=>{expect(GEMINI_MODEL).toBe("gemini-3.8-flash");expect(GEMINI_ENDPOINT).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent");});
+  it("distinguishes temporary Google overload from missing model access",()=>{expect(geminiUnavailable(503)).toContain("temporarily busy");expect(geminiUnavailable(404)).toContain("selected Gemini model");});
   it("syncs at 9:15 IST on weekdays",()=>expect(isMarketOpen(new Date("2026-11-23T03:45:00Z"))).toBe(true));
   it("does not sync before 9:15 IST",()=>expect(isMarketOpen(new Date("2026-11-23T03:44:00Z"))).toBe(false));
   it("does not sync after 15:30 IST",()=>expect(isMarketOpen(new Date("2026-11-23T10:01:00Z"))).toBe(false));

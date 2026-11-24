@@ -8,7 +8,9 @@
 - [ ] Research evidence/thesis editing, peers, live graph news, management promise editing/AI autofill, real historical returns and tax countdown.
 - [ ] Verify private read-back, feeds, Gemini, quotes, research and mobile layouts.
 - [ ] Holding/watchlist type selector and distinct watchlist table; watchlist coverage across all stock surfaces.
-- [ ] Gemini 3.8 Flash (approved replacement for unavailable 2.5 Flash) and instant switching between cached language translations.
+- [x] Unify translation, summary and research calls on approved Gemini 3.8 Flash; preserve cached-language switching and provide manual retry.
+- [ ] Verify successful new Gemini translations and summaries — blocked by Google's heavy-demand responses/timeouts.
 - [ ] Publisher-specific Google News queries for blocked feeds; diagnostics outside the Command Center.
 - [ ] Multi-select source checkbox menu with Select All / Clear.
-- [ ] Diagnose live Gemini 404, unify all Gemini calls on the active endpoint, verify translation and stock-search actions, and deploy through the app's server deployment.
+- [x] Diagnose Gemini 404 and verify live stock autocomplete and Healthcare theme autofill.
+- [ ] Publish updated app server functions (no separate edge-function files exist).
